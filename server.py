@@ -3,7 +3,7 @@
 Python gRPC Finance Backend Server
 Listens on localhost:50051
 """
-
+ 
 import grpc
 from concurrent import futures
 import time
@@ -11,11 +11,11 @@ import uuid
 from datetime import datetime
 import finance_pb2
 import finance_pb2_grpc
-
-
+ 
+ 
 class FinanceServicer(finance_pb2_grpc.FinanceServiceServicer):
     """Implementation of FinanceService"""
-
+ 
     def __init__(self):
         # Simulated database
         self.transactions = {
@@ -59,40 +59,48 @@ class FinanceServicer(finance_pb2_grpc.FinanceServiceServicer):
                 }
             ]
         }
-
+ 
+    def _ensure_user(self, user_id):
+        """
+        Auto-create user entry jika belum ada.
+        Dipanggil di semua method agar user baru yang di-register
+        langsung bisa digunakan tanpa NOT_FOUND error.
+        """
+        if user_id not in self.transactions:
+            self.transactions[user_id] = []
+            print(f"   ℹ️  User '{user_id}' tidak ada → dibuat otomatis (list kosong)")
+ 
     def GetSummary(self, request, context):
         """Get income and expense summary for a user"""
         user_id = request.userId
         print(f"📊 [gRPC] GetSummary for userId={user_id}")
-
-        if user_id not in self.transactions:
-            context.set_details(f"User {user_id} not found")
-            context.set_code(grpc.StatusCode.NOT_FOUND)
-            return finance_pb2.GetSummaryResponse()
-
+ 
+        # FIX: auto-create user baru daripada langsung NOT_FOUND
+        # User baru yang belum punya transaksi akan return totalIncome=0, totalExpense=0
+        self._ensure_user(user_id)
+ 
         transactions = self.transactions[user_id]
-        total_income = sum(tx["amount"] for tx in transactions if tx["type"] == "income")
+        total_income  = sum(tx["amount"] for tx in transactions if tx["type"] == "income")
         total_expense = sum(tx["amount"] for tx in transactions if tx["type"] == "expense")
-
+ 
         print(f"   ✅ Income: Rp{total_income:,}, Expense: Rp{total_expense:,}")
         return finance_pb2.GetSummaryResponse(
             totalIncome=total_income,
             totalExpense=total_expense
         )
-
+ 
     def GetHistory(self, request, context):
         """Stream transaction history for a user"""
         user_id = request.userId
         print(f"📜 [gRPC] GetHistory stream for userId={user_id}")
-
-        if user_id not in self.transactions:
-            context.set_details(f"User {user_id} not found")
-            context.set_code(grpc.StatusCode.NOT_FOUND)
-            return
-
+ 
+        # FIX: auto-create user baru daripada NOT_FOUND
+        # User baru akan stream 0 item → history_end dengan count=0
+        self._ensure_user(user_id)
+ 
         transactions = self.transactions[user_id]
         print(f"   📤 Streaming {len(transactions)} transactions...")
-
+ 
         for idx, tx in enumerate(transactions):
             yield finance_pb2.Transaction(
                 id=tx["id"],
@@ -105,41 +113,39 @@ class FinanceServicer(finance_pb2_grpc.FinanceServiceServicer):
             # Small delay to simulate network streaming
             if idx < len(transactions) - 1:
                 time.sleep(0.1)
-
+ 
         print(f"   ✅ Stream completed")
-
+ 
     def AddTransaction(self, request, context):
         """Add a new transaction for a user"""
-        user_id = request.userId
-        tx_type = request.type
-        amount = request.amount
+        user_id  = request.userId
+        tx_type  = request.type
+        amount   = request.amount
         category = request.category
-
+ 
         print(f"➕ [gRPC] AddTransaction: userId={user_id}, type={tx_type}, amount=Rp{amount:,}, category={category}")
-
-        # Initialize user if doesn't exist
-        if user_id not in self.transactions:
-            self.transactions[user_id] = []
-
+ 
+        # Sudah konsisten dengan _ensure_user
+        self._ensure_user(user_id)
+ 
         # Create transaction
         transaction = {
-            "id": str(uuid.uuid4())[:8],
-            "type": tx_type,
-            "amount": amount,
-            "category": category,
+            "id":        str(uuid.uuid4())[:8],
+            "type":      tx_type,
+            "amount":    amount,
+            "category":  category,
             "timestamp": datetime.utcnow().isoformat() + "Z"
         }
-
-        # Store transaction
+ 
         self.transactions[user_id].append(transaction)
-
+ 
         print(f"   ✅ Transaction saved with ID: {transaction['id']}")
         return finance_pb2.AddTransactionResponse(
             success=True,
             message=f"Transaction added successfully (ID: {transaction['id']})"
         )
-
-
+ 
+ 
 def serve():
     """Start the gRPC server"""
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
@@ -147,20 +153,20 @@ def serve():
         FinanceServicer(), server
     )
     server.add_insecure_port("[::]:50051")
-    
+ 
     print("🚀 Finance gRPC Backend Server starting...")
     print("📍 Listening on localhost:50051")
     print("🔌 Service: finance.FinanceService")
     print()
-    
+ 
     server.start()
     try:
         while True:
-            time.sleep(86400)  # Sleep indefinitely
+            time.sleep(86400)
     except KeyboardInterrupt:
         print("\n\n⛔ Shutting down server...")
         server.stop(0)
-
-
+ 
+ 
 if __name__ == "__main__":
     serve()

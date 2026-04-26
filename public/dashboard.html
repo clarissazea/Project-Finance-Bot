@@ -657,6 +657,51 @@
       border-radius: var(--radius-sm);
     }
  
+    /* ── User list items ─────────────────────────────── */
+    .user-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: all 160ms ease;
+    }
+ 
+    .user-item:hover { border-color: var(--border-hover); background: rgba(111,184,255,0.04); }
+ 
+    .user-item.active-user {
+      border-color: rgba(111,184,255,0.25);
+      background: rgba(111,184,255,0.06);
+    }
+ 
+    .user-avatar {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(111,184,255,0.3), rgba(124,230,212,0.2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.72rem; font-weight: 800; color: var(--cyan);
+      flex-shrink: 0;
+    }
+ 
+    .user-item.active-user .user-avatar {
+      background: linear-gradient(135deg, var(--cyan-2), var(--cyan));
+      color: #032428;
+    }
+ 
+    .user-name { font-size: 0.88rem; font-weight: 600; color: var(--text); }
+    .user-id-tag { font-size: 0.72rem; color: var(--muted); font-family: 'Montserrat', monospace; }
+ 
+    .user-switch-btn {
+      margin-left: auto;
+      height: 28px;
+      padding: 0 10px;
+      font-size: 0.72rem;
+      border-radius: 7px;
+    }
+ 
     /* ── Responsive ──────────────────────────────────────── */
     @media (max-width: 900px) {
       .main { grid-template-columns: 1fr; }
@@ -691,6 +736,9 @@
     </button>
     <button data-view="transactions" class="nav-btn">
       <span class="nav-icon">⇄</span> Transactions
+    </button>
+    <button data-view="users" class="nav-btn">
+      <span class="nav-icon">👤</span> Users
     </button>
     <button data-view="settings" class="nav-btn">
       <span class="nav-icon">⚙</span> Settings
@@ -815,6 +863,44 @@
         <div class="card-title">History Transaksi</div>
         <div id="history-list">
           <div class="empty-state">History kosong. Tekan <strong>History</strong> untuk memuat.</div>
+        </div>
+      </div>
+ 
+      <!-- ─── USERS VIEW ─────────────── -->
+      <div class="card" id="card-users" style="display:none;">
+        <div class="card-title">Manajemen User</div>
+ 
+        <!-- Active user indicator -->
+        <div id="active-user-banner" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--radius-sm);background:linear-gradient(135deg,rgba(111,184,255,0.07),rgba(124,230,212,0.04));border:1px solid rgba(111,184,255,0.14);margin-bottom:16px;">
+          <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--cyan-2),var(--cyan));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.85rem;color:#032428;flex-shrink:0;" id="active-user-avatar">U1</div>
+          <div>
+            <div style="font-size:0.72rem;color:var(--muted);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;">User Aktif</div>
+            <div style="font-weight:700;color:var(--cyan);font-size:0.95rem;" id="active-user-label">user1</div>
+          </div>
+          <span class="badge ok" style="margin-left:auto;">AKTIF</span>
+        </div>
+ 
+        <!-- Switch user -->
+        <div class="cmd-group" style="margin-bottom:16px;">
+          <label>Switch User</label>
+          <div style="display:flex;flex-direction:column;gap:6px;" id="user-list">
+            <div class="empty-state">Belum ada user terdaftar.</div>
+          </div>
+        </div>
+ 
+        <div class="divider"></div>
+ 
+        <!-- Register new user -->
+        <div class="cmd-group">
+          <label>Register User Baru</label>
+          <div class="cmd-row">
+            <input type="text" id="inp-new-userId" placeholder="User ID (misal: user2)" />
+            <input type="text" id="inp-new-userName" placeholder="Nama (opsional)" style="flex:1.2;" />
+          </div>
+          <div class="cmd-row" style="margin-top:4px;">
+            <button class="primary" style="width:100%;" onclick="cmdRegisterUser()">Register User</button>
+          </div>
+          <div style="font-size:0.78rem;color:var(--muted);margin-top:8px;">Akan mengirim <code style="background:rgba(255,255,255,0.04);padding:2px 6px;border-radius:4px;font-size:0.75rem;">cmd_register_user</code> via WebSocket → gRPC.</div>
         </div>
       </div>
  
@@ -1082,6 +1168,7 @@
     const views = {
       overview: ['card-balance', 'card-status'],
       transactions: ['card-transactions', 'card-history'],
+      users: ['card-users'],
       settings: ['card-settings']
     };
  
@@ -1106,7 +1193,135 @@
     setView('overview');
   })();
  
-  // ── Helpers ────────────────────────────────────
+  // ── User Management ────────────────────────────
+  // Local state: list of known users + active user
+  let knownUsers = [{ id: 'user1', name: 'User 1' }];
+  let activeUserId = 'user1';
+ 
+  function renderUserList() {
+    const list = document.getElementById('user-list');
+    if (!list) return;
+    list.innerHTML = '';
+ 
+    if (knownUsers.length === 0) {
+      list.innerHTML = '<div class="empty-state">Belum ada user terdaftar.</div>';
+      return;
+    }
+ 
+    knownUsers.forEach(u => {
+      const isActive = u.id === activeUserId;
+      const initials = (u.name || u.id).slice(0, 2).toUpperCase();
+      const row = document.createElement('div');
+      row.className = 'user-item' + (isActive ? ' active-user' : '');
+      row.innerHTML = `
+        <div class="user-avatar">${initials}</div>
+        <div>
+          <div class="user-name">${u.name || u.id}</div>
+          <div class="user-id-tag">${u.id}</div>
+        </div>
+        ${isActive
+          ? '<span class="badge ok" style="margin-left:auto;">Aktif</span>'
+          : `<button class="secondary user-switch-btn" onclick="switchUser('${u.id}','${u.name||u.id}')">Switch</button>`
+        }
+      `;
+      list.appendChild(row);
+    });
+ 
+    // Sync active user banner
+    const label = document.getElementById('active-user-label');
+    const avatar = document.getElementById('active-user-avatar');
+    const activeUser = knownUsers.find(u => u.id === activeUserId);
+    if (label) label.textContent = activeUser ? (activeUser.name || activeUser.id) : activeUserId;
+    if (avatar) avatar.textContent = (activeUser ? (activeUser.name || activeUser.id) : activeUserId).slice(0, 2).toUpperCase();
+  }
+ 
+  function switchUser(userId, userName) {
+    activeUserId = userId;
+    // Sync the User ID input in Transactions
+    const inp = document.getElementById('inp-userId');
+    if (inp) inp.value = userId;
+    renderUserList();
+    addLog('info', `[USER] Switch ke user: ${userName || userId}`);
+    showToast(`✅ User aktif: ${userName || userId}`, 'info');
+  }
+ 
+  function cmdRegisterUser() {
+    const idEl   = document.getElementById('inp-new-userId');
+    const nameEl = document.getElementById('inp-new-userName');
+    const userId = idEl.value.trim();
+    const userName = nameEl.value.trim() || userId;
+ 
+    if (!userId) {
+      showToast('⚠️ User ID tidak boleh kosong.', 'error');
+      return;
+    }
+    if (knownUsers.find(u => u.id === userId)) {
+      showToast(`⚠️ User "${userId}" sudah terdaftar.`, 'error');
+      return;
+    }
+ 
+    addLog('info', `[CMD] Register user baru: ${userId}`);
+    socket.emit('cmd_register_user', { userId, userName });
+ 
+    // Optimistically add to local list; server may confirm via user_registered event
+    knownUsers.push({ id: userId, name: userName });
+    renderUserList();
+    idEl.value = '';
+    nameEl.value = '';
+    showToast(`👤 Mendaftarkan user "${userId}"...`, 'info');
+  }
+ 
+  // Server confirms registration
+  socket.on('user_registered', (data) => {
+    const { userId, userName } = data;
+    // Avoid duplicate if already added optimistically
+    if (!knownUsers.find(u => u.id === userId)) {
+      knownUsers.push({ id: userId, name: userName || userId });
+    } else {
+      // Update name if server provides one
+      const u = knownUsers.find(u => u.id === userId);
+      if (u && userName) u.name = userName;
+    }
+    renderUserList();
+    addLog('income', `[USER] User "${userId}" berhasil didaftarkan.`);
+    showToast(`✅ User "${userId}" terdaftar!`, 'success');
+  });
+ 
+  // Server sends error (e.g. user not found / register failed)
+  socket.on('user_error', (data) => {
+    addLog('warn', `[USER] Error: ${data.message}`);
+    showToast(`⚠️ ${data.message}`, 'error');
+    // Rollback optimistic add if registration failed
+    if (data.userId) {
+      knownUsers = knownUsers.filter(u => u.id !== data.userId);
+      renderUserList();
+    }
+  });
+ 
+  // Init render on load
+  renderUserList();
+ 
+  // Terima daftar user dari server saat pertama connect
+  socket.on("user_list", (users) => {
+    users.forEach(u => {
+      if (!knownUsers.find(k => k.id === u.userId)) {
+        knownUsers.push({ id: u.userId, name: u.userName });
+      }
+    });
+    renderUserList();
+  });
+ 
+  // Keep User ID input in Transactions synced when user types manually
+  (function syncUserIdInput() {
+    const inp = document.getElementById('inp-userId');
+    if (!inp) return;
+    inp.addEventListener('change', () => {
+      activeUserId = inp.value.trim() || 'user1';
+      renderUserList();
+    });
+  })();
+ 
+ 
   function appendTxRow(listId, tx, type, sign) {
     const list = document.getElementById(listId);
     if (!list) return;
