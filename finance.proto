@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package finance;
+
+service FinanceService {
+  rpc GetSummary(GetSummaryRequest) returns (GetSummaryResponse) {}
+  rpc GetHistory(GetHistoryRequest) returns (stream Transaction) {}
+  rpc AddTransaction(AddTransactionRequest) returns (AddTransactionResponse) {}
+}
+
+message GetSummaryRequest {
+  string userId = 1;
+}
+
+message GetSummaryResponse {
+  double totalIncome = 1;
+  double totalExpense = 2;
+}
+
+message GetHistoryRequest {
+  string userId = 1;
+}
+
+message Transaction {
+  string id = 1;
+  string userId = 2;
+  string type = 3;
+  double amount = 4;
+  string category = 5;
+  string timestamp = 6;
+}
+
+message AddTransactionRequest {
+  string userId = 1;
+  string type = 2;
+  double amount = 3;
+  string category = 4;
+}
+
+message AddTransactionResponse {
+  bool success = 1;
+  string message = 2;
+}
