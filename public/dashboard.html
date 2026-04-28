@@ -1182,6 +1182,7 @@ socket.on("disconnect", () => {
 // KOMPONEN 1: Balance → bubble chat + badge gRPC
 // ═══════════════════════════════════════════════════════
 socket.on("balance_update", (data) => {
+  console.log(`[socket.on balance_update] Received balance data, knownUsers: ${knownUsers.length}`, knownUsers.map(u => u.id));
   const { totalIncome, totalExpense, currentBalance } = data;
   const pct = totalIncome > 0 ? Math.min(100, totalIncome / (totalIncome + totalExpense) * 100) : 0;
 
@@ -1193,6 +1194,7 @@ socket.on("balance_update", (data) => {
   document.getElementById("badge-grpc").className   = "badge ok";
 
   addLog("income", `Balance: Rp ${Math.abs(currentBalance).toLocaleString("id-ID")}`);
+  console.log(`[socket.on balance_update] Finished, knownUsers: ${knownUsers.length}`, knownUsers.map(u => u.id));
 });
 
 // KOMPONEN 2: History streaming → bubble per-item
@@ -1258,20 +1260,31 @@ socket.on("user_registered", (data) => {
 });
 
 socket.on("user_error", (data) => {
+  console.log(`[socket.on user_error] Error for user ${data.userId}: ${data.message}`);
   addLog("warn", `User error: ${data.message}`);
   showToast(`⚠️ ${data.message}`, "error");
-  if (data.userId) {
-    knownUsers = knownUsers.filter(u => u.id !== data.userId);
-    renderContactList();
-  }
+  // NOTE: Do NOT remove user from knownUsers here!
+  // user_error can happen for temporary reasons (GetBalance failed, etc)
+  // Only proper user_deleted event should remove users from the list
+  console.log(`[socket.on user_error] Finished, knownUsers: ${knownUsers.length}`, knownUsers.map(u => u.id));
 });
 
 socket.on("user_list", (users) => {
+  console.log(`[socket.on user_list] Received ${users.length} users from server:`, users.map(u => u.userId));
+  console.log(`[socket.on user_list] Current knownUsers before: ${knownUsers.length}`, knownUsers.map(u => u.id));
+  
+  if (!users || users.length === 0) {
+    console.warn("[socket.on user_list] Received empty user list from server!");
+  }
+  
   users.forEach(u => {
     if (!knownUsers.find(k => k.id === u.userId)) {
+      console.log(`[socket.on user_list] Adding user: ${u.userId}`);
       knownUsers.push({ id: u.userId, name: u.userName });
     }
   });
+  
+  console.log(`[socket.on user_list] Current knownUsers after: ${knownUsers.length}`, knownUsers.map(u => u.id));
   renderContactList();
 });
 
@@ -1304,10 +1317,12 @@ socket.on("user_deleted", (data) => {
 // ═══════════════════════════════════════════════════════
 function cmdGetBalance() {
   if (!activeUserId) { showToast("⚠️ Pilih user terlebih dahulu.", "error"); return; }
+  console.log(`[cmdGetBalance] Getting balance for user: ${activeUserId}, current knownUsers: ${knownUsers.length}`);
   pushBubble("out", "💳 Cek saldo akun ini");
   addLog("info", `[CMD] GetBalance: ${activeUserId}`);
   showTyping();
   socket.emit("cmd_get_balance", { userId: activeUserId });
+  console.log(`[cmdGetBalance] Emitted cmd_get_balance event`);
 }
 
 function cmdGetHistory() {
@@ -1413,7 +1428,14 @@ function autoResize(el) {
 // CONTACT LIST
 // ═══════════════════════════════════════════════════════
 function renderContactList(filter = "") {
+  console.log(`[renderContactList] Called with filter: "${filter}", knownUsers: ${knownUsers.length}`);
+  
   const list = document.getElementById("contact-list");
+  if (!list) {
+    console.error("[renderContactList] contact-list element not found!");
+    return;
+  }
+  
   list.innerHTML = "";
 
   const filtered = knownUsers.filter(u =>
@@ -1421,42 +1443,64 @@ function renderContactList(filter = "") {
     (u.name || "").toLowerCase().includes(filter.toLowerCase())
   );
 
+  console.log(`[renderContactList] Filtered users: ${filtered.length}`);
+
   if (filtered.length === 0) {
-    list.innerHTML = `<div style="padding:20px;text-align:center;font-size:0.8rem;color:var(--muted)">Tidak ada user ditemukan</div>`;
+    const emptyDiv = document.createElement("div");
+    emptyDiv.style.padding = "20px";
+    emptyDiv.style.textAlign = "center";
+    emptyDiv.style.fontSize = "0.8rem";
+    emptyDiv.style.color = "var(--muted)";
+    emptyDiv.textContent = "Tidak ada user ditemukan";
+    list.appendChild(emptyDiv);
     return;
   }
 
+  const fragment = document.createDocumentFragment();
+  
   filtered.forEach(u => {
-    const initials = (u.name || u.id).slice(0, 2).toUpperCase();
-    const isActive = u.id === activeUserId;
-    const history  = chatHistory[u.id] || [];
-    const last     = history[history.length - 1];
+    try {
+      const initials = (u.name || u.id).slice(0, 2).toUpperCase();
+      const isActive = u.id === activeUserId;
+      const history  = chatHistory[u.id] || [];
+      const last     = history[history.length - 1];
 
-    const item = document.createElement("div");
-    item.className = "contact-item" + (isActive ? " active" : "");
-    const contentDiv = document.createElement("div");
-    contentDiv.style.flex = "1";
-    contentDiv.style.minWidth = "0";
-    contentDiv.innerHTML = `
-      <div class="contact-avatar">${initials}</div>
-      <div class="contact-info">
-        <div class="contact-name">${u.name || u.id}</div>
-        <div class="contact-preview">${last ? last.content.slice(0, 40) : u.id}</div>
-      </div>
-      <div class="contact-time">${last ? last.time : ""}</div>
-    `;
-    item.appendChild(contentDiv);
+      const item = document.createElement("div");
+      item.className = "contact-item" + (isActive ? " active" : "");
+      
+      const contentDiv = document.createElement("div");
+      contentDiv.style.flex = "1";
+      contentDiv.style.minWidth = "0";
+      contentDiv.style.display = "flex";
+      contentDiv.style.alignItems = "center";
+      contentDiv.style.gap = "10px";
+      
+      contentDiv.innerHTML = `
+        <div class="contact-avatar">${initials}</div>
+        <div class="contact-info">
+          <div class="contact-name">${u.name || u.id}</div>
+          <div class="contact-preview">${last ? last.content.slice(0, 40) : u.id}</div>
+        </div>
+        <div class="contact-time" style="margin-left: auto;">${last ? last.time : ""}</div>
+      `;
+      item.appendChild(contentDiv);
 
-    // Delete button for all users
-    const deleteBtn = document.createElement("button");
-    deleteBtn.className = "contact-delete-btn";
-    deleteBtn.textContent = "✕";
-    deleteBtn.onclick = (e) => { e.stopPropagation(); cmdDeleteUser(u.id); };
-    item.appendChild(deleteBtn);
+      // Delete button for all users
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "contact-delete-btn";
+      deleteBtn.textContent = "✕";
+      deleteBtn.onclick = (e) => { e.stopPropagation(); cmdDeleteUser(u.id); };
+      item.appendChild(deleteBtn);
 
-    item.onclick = () => selectUser(u.id);
-    list.appendChild(item);
+      item.onclick = () => selectUser(u.id);
+      fragment.appendChild(item);
+    } catch (err) {
+      console.error(`[renderContactList] Error rendering user ${u.id}:`, err);
+    }
   });
+  
+  list.appendChild(fragment);
+  console.log(`[renderContactList] Rendered ${filtered.length} users successfully`);
 }
 
 function filterContacts(val) {
@@ -1464,18 +1508,59 @@ function filterContacts(val) {
 }
 
 function selectUser(userId) {
+  console.log(`[selectUser] Switching to user: ${userId}, knownUsers count: ${knownUsers.length}`);
+  
   activeUserId = userId;
-  renderCategoryChart(); // KOMPONEN 4: refresh chart untuk user yang dipilih
+  
   const user = knownUsers.find(u => u.id === userId);
-  const name = user ? (user.name || user.id) : userId;
+  if (!user) {
+    console.warn(`[selectUser] User ${userId} tidak ditemukan di knownUsers`);
+    return;
+  }
+  
+  const name = user.name || user.id;
   const initials = name.slice(0, 2).toUpperCase();
 
-  document.getElementById("chat-avatar").textContent = initials;
-  document.getElementById("chat-name").textContent   = name;
-  document.getElementById("chat-sub").textContent    = `ID: ${userId} · FinBot Finance Assistant`;
+  // Update chat header
+  try {
+    document.getElementById("chat-avatar").textContent = initials;
+    document.getElementById("chat-name").textContent = name;
+    document.getElementById("chat-sub").textContent = `ID: ${userId} · FinBot Finance Assistant`;
+    console.log(`[selectUser] Chat header updated`);
+  } catch (err) {
+    console.error("[selectUser] Error updating chat header:", err);
+  }
 
-  renderContactList(document.getElementById("search-input").value);
-  renderChatMessages();
+  // Clear search input to prevent accidental filtering
+  try {
+    document.getElementById("search-input").value = "";
+  } catch (err) {
+    console.warn("[selectUser] Could not clear search input:", err);
+  }
+
+  // Render contact list FIRST (should always work, independent of chat content)
+  try {
+    console.log(`[selectUser] About to render contact list with ${knownUsers.length} users`);
+    renderContactList();
+    console.log(`[selectUser] Contact list rendered successfully`);
+  } catch (err) {
+    console.error("[selectUser] Error rendering contact list:", err);
+  }
+
+  // Then render chat content
+  try {
+    renderCategoryChart();
+    console.log(`[selectUser] Category chart rendered`);
+  } catch (err) {
+    console.error("[selectUser] Error rendering category chart:", err);
+  }
+
+  try {
+    renderChatMessages();
+    console.log(`[selectUser] Chat messages rendered`);
+  } catch (err) {
+    console.error("[selectUser] Error rendering chat messages:", err);
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1487,7 +1572,9 @@ function pushBubble(role, content, type = "text") {
   const now = new Date().toLocaleTimeString("id-ID", { hour:"2-digit", minute:"2-digit" });
   chatHistory[activeUserId].push({ role, content, type, time: now });
   renderChatMessages();
-  renderContactList(document.getElementById("search-input").value);
+  // Only refresh contact list if there are unread messages to show
+  // Use empty filter (no search) to show all users
+  renderContactList();
 }
 
 function renderChatMessages() {
@@ -1566,12 +1653,13 @@ function renderHistoryCard(container, msg) {
   const rows = items.map(tx => {
     const t = tx.type === "income" ? "income" : "expense";
     const s = t === "income" ? "+" : "-";
+    const abbr = t === "income" ? "inc" : "exp";
     return `<div class="tx-item">
       <div class="tx-item-left">
         <div class="tx-item-cat">${tx.category}</div>
         <div class="tx-item-time">${tx.timestamp || ""}</div>
       </div>
-      <div class="tx-item-amt ${t}">${s}Rp ${Number(tx.amount).toLocaleString("id-ID")}</div>
+      <div class="tx-item-amt ${abbr}">${s}Rp ${Number(tx.amount).toLocaleString("id-ID")}</div>
     </div>`;
   }).join("");
 
@@ -1604,8 +1692,7 @@ function appendHistoryItem(tx, type, sign) {
   if (existing >= 0) {
     hist[existing].items = [..._historyBatch];
   } else {
-    hist.push({ role:"in", type:"history_card", _streaming:true, items:[...tx], time:now });
-    // fix: push the first item array properly
+    hist.push({ role:"in", type:"history_card", _streaming:true, items:[], time:now });
     hist[hist.length - 1].items = [..._historyBatch];
   }
   renderChatMessages();
