@@ -1182,19 +1182,20 @@ socket.on("disconnect", () => {
 // KOMPONEN 1: Balance → bubble chat + badge gRPC
 // ═══════════════════════════════════════════════════════
 socket.on("balance_update", (data) => {
-  console.log(`[socket.on balance_update] Received balance data, knownUsers: ${knownUsers.length}`, knownUsers.map(u => u.id));
   const { totalIncome, totalExpense, currentBalance } = data;
   const pct = totalIncome > 0 ? Math.min(100, totalIncome / (totalIncome + totalExpense) * 100) : 0;
 
-  const content = buildBalanceBubble(totalIncome, totalExpense, currentBalance, pct);
-  pushBubble("in", content, "bot");
+  // buildBalanceBubble pushes directly to chatHistory and renders
+  buildBalanceBubble(totalIncome, totalExpense, currentBalance, pct);
+  // Do NOT call pushBubble here — buildBalanceBubble already handles chatHistory
 
   // KOMPONEN 2: gRPC badge berubah
   document.getElementById("badge-grpc").textContent = "ONLINE";
   document.getElementById("badge-grpc").className   = "badge ok";
 
   addLog("income", `Balance: Rp ${Math.abs(currentBalance).toLocaleString("id-ID")}`);
-  console.log(`[socket.on balance_update] Finished, knownUsers: ${knownUsers.length}`, knownUsers.map(u => u.id));
+  // Ensure contact list stays visible after balance update
+  renderContactList();
 });
 
 // KOMPONEN 2: History streaming → bubble per-item
@@ -1210,6 +1211,8 @@ socket.on("history_item", (tx) => {
 socket.on("history_end", (data) => {
   finalizeHistoryBubble(data.count);
   addLog("info", `History selesai: ${data.count} transaksi.`);
+  // Re-render contact list to ensure users stay visible after history stream
+  renderContactList();
 });
 
 // KOMPONEN 3: Log & chat update on new transaction (broadcast from server)
@@ -1223,6 +1226,8 @@ socket.on("transaction_added", (data) => {
   }
   // KOMPONEN 4: update chart langsung saat transaksi baru masuk (server-broadcast)
   recordCategoryData(data.userId, data.category, data.amount);
+  // Always re-render contact list to keep users visible
+  renderContactList();
 });
 
 // ═══════════════════════════════════════════════════════
@@ -1270,21 +1275,24 @@ socket.on("user_error", (data) => {
 });
 
 socket.on("user_list", (users) => {
-  console.log(`[socket.on user_list] Received ${users.length} users from server:`, users.map(u => u.userId));
-  console.log(`[socket.on user_list] Current knownUsers before: ${knownUsers.length}`, knownUsers.map(u => u.id));
-  
-  if (!users || users.length === 0) {
-    console.warn("[socket.on user_list] Received empty user list from server!");
-  }
-  
-  users.forEach(u => {
-    if (!knownUsers.find(k => k.id === u.userId)) {
-      console.log(`[socket.on user_list] Adding user: ${u.userId}`);
-      knownUsers.push({ id: u.userId, name: u.userName });
+  if (!users || users.length === 0) return;
+
+  // Full authoritative sync: server list is the source of truth.
+  // Rebuild knownUsers from server data, preserving name updates.
+  const serverIds = new Set(users.map(u => u.userId));
+  const newList = users.map(u => {
+    const existing = knownUsers.find(k => k.id === u.userId);
+    return { id: u.userId, name: u.userName || (existing && existing.name) || u.userId };
+  });
+
+  // Keep locally-optimistic users (registered but not yet confirmed by server)
+  knownUsers.forEach(k => {
+    if (!serverIds.has(k.id)) {
+      newList.push(k);
     }
   });
-  
-  console.log(`[socket.on user_list] Current knownUsers after: ${knownUsers.length}`, knownUsers.map(u => u.id));
+
+  knownUsers = newList;
   renderContactList();
 });
 
@@ -1479,7 +1487,7 @@ function renderContactList(filter = "") {
         <div class="contact-avatar">${initials}</div>
         <div class="contact-info">
           <div class="contact-name">${u.name || u.id}</div>
-          <div class="contact-preview">${last ? last.content.slice(0, 40) : u.id}</div>
+          <div class="contact-preview">${last ? (last.content && typeof last.content === "string" ? last.content.slice(0, 40) : (last.type === "balance_card" ? "💳 Cek Saldo" : last.type === "history_card" ? "📜 History" : u.id)) : u.id}</div>
         </div>
         <div class="contact-time" style="margin-left: auto;">${last ? last.time : ""}</div>
       `;
