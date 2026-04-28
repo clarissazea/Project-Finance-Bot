@@ -824,10 +824,11 @@
       transform: translateY(12px) scale(0.98);
       transition: transform 200ms ease;
     }
+    .modal > div:first-child { display: flex; flex-direction: column; gap: 4px; }
     .modal-overlay.open .modal { transform: translateY(0) scale(1); }
 
     .modal-title { font-size: 1rem; font-weight: 700; color: var(--text); }
-    .modal-sub { font-size: 0.82rem; color: var(--text-dim); margin-top: -8px; }
+    .modal-sub { font-size: 0.82rem; color: var(--text-dim); margin-top: 6px; }
 
     .modal-input {
       width: 100%;
@@ -840,7 +841,9 @@
       font-size: 0.88rem;
       outline: none;
       transition: border-color 150ms;
+      margin-top: 8px;
     }
+    .modal-input:first-of-type { margin-top: 0; }
     .modal-input:focus { border-color: rgba(77,166,255,0.35); }
     .modal-input::placeholder { color: var(--muted); }
 
