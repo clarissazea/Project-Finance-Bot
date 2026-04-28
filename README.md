@@ -29,6 +29,8 @@ python server.py
 ```
 
 ### Run Front-end
+
+```bash
 npm start
 ```
 
