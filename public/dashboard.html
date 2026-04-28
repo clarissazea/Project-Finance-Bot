@@ -8,28 +8,51 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg:        #0b0f1a;
-      --panel-l:   #0f1420;
-      --panel-m:   #111827;
-      --panel-r:   #0d1119;
-      --surface:   #1a2235;
-      --surface-2: #1e2a3a;
-      --border:    rgba(255,255,255,0.055);
-      --muted:     #4b5e7a;
-      --text:      #d8e8f8;
-      --text-dim:  #7a95b5;
-      --cyan:      #4da6ff;
-      --cyan-2:    #56e0c8;
-      --green:     #34d399;
-      --red:       #f87171;
-      --amber:     #fbbf24;
-      --bubble-out:#1a4a7a;
-      --bubble-in: #1a2a3d;
-      --accent:    linear-gradient(135deg, #56e0c8, #4da6ff);
+      /* Light Mode (WhatsApp style) */
+      --bg:        #ffffff;
+      --panel-l:   #ffffff;
+      --panel-m:   #ffffff;
+      --panel-r:   #f5f5f5;
+      --surface:   #e5e5ea;
+      --surface-2: #d3d3d3;
+      --border:    #d0d0d0;
+      --muted:     #555555;
+      --text:      #000000;
+      --text-dim:  #333333;
+      --cyan:      #34a853;
+      --cyan-2:    #34a853;
+      --green:     #34a853;
+      --red:       #dc143c;
+      --amber:     #ff9500;
+      --bubble-out:#dcf8c6;
+      --bubble-in: #e1e5eb;
+      --accent:    linear-gradient(135deg, #34a853, #34a853);
       --radius-lg: 18px;
       --radius:    12px;
       --radius-sm: 8px;
       --h: 100vh;
+    }
+
+    html.dark-mode {
+      /* Dark Mode (WhatsApp Dark) */
+      --bg:        #0a0e11;
+      --panel-l:   #111b21;
+      --panel-m:   #0a0e11;
+      --panel-r:   #111b21;
+      --surface:   #202c33;
+      --surface-2: #2a3f47;
+      --border:    #2a3f47;
+      --muted:     #8a8a8a;
+      --text:      #e1e1e1;
+      --text-dim:  #aaaaaa;
+      --cyan:      #31a24c;
+      --cyan-2:    #31a24c;
+      --green:     #31a24c;
+      --red:       #f85149;
+      --amber:     #ffa726;
+      --bubble-out:#056162;
+      --bubble-in: #202c33;
+      --accent:    linear-gradient(135deg, #31a24c, #31a24c);
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -46,7 +69,7 @@
     ══════════════════════════════════════ */
     .app {
       display: grid;
-      grid-template-columns: 300px 1fr 300px;
+      grid-template-columns: 280px 1fr 280px;
       height: 100vh;
       overflow: hidden;
     }
@@ -63,12 +86,12 @@
     }
 
     .panel-left-header {
-      padding: 16px 16px 12px;
+      padding: 10px 12px 8px;
       border-bottom: 1px solid var(--border);
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      background: rgba(15,20,32,0.8);
+      gap: 8px;
+      background: var(--panel-l);
       backdrop-filter: blur(10px);
       flex-shrink: 0;
     }
@@ -90,6 +113,24 @@
 
     .brand-text { font-weight: 800; font-size: 1.05rem; letter-spacing: 0.04em; }
     .brand-text span { background: var(--accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+    /* Theme toggle button */
+    .theme-toggle-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      transition: all 150ms;
+      flex-shrink: 0;
+    }
+    .theme-toggle-btn:hover { background: var(--surface-2); }
 
     .ws-pill {
       display: flex; align-items: center; gap: 6px;
@@ -128,7 +169,7 @@
       transition: border-color 150ms;
     }
     .search-wrap input::placeholder { color: var(--muted); }
-    .search-wrap input:focus { border-color: rgba(77,166,255,0.3); }
+    .search-wrap input:focus { border-color: rgba(52,168,83,0.4); }
     .search-icon {
       position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
       color: var(--muted); font-size: 0.85rem; pointer-events: none;
@@ -136,12 +177,12 @@
 
     /* Section label */
     .section-label {
-      font-size: 0.65rem;
+      font-size: 0.62rem;
       font-weight: 700;
-      letter-spacing: 0.12em;
+      letter-spacing: 0.1em;
       text-transform: uppercase;
       color: var(--muted);
-      padding: 12px 16px 6px;
+      padding: 8px 12px 4px;
       flex-shrink: 0;
     }
 
@@ -156,16 +197,23 @@
     .contact-item {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 10px 16px;
+      gap: 10px;
+      padding: 8px 12px;
       cursor: pointer;
-      border-bottom: 1px solid rgba(255,255,255,0.02);
+      border-bottom: 1px solid rgba(0,0,0,0.05);
       transition: background 150ms;
       position: relative;
+      justify-content: space-between;
     }
 
-    .contact-item:hover { background: rgba(255,255,255,0.03); }
-    .contact-item.active { background: rgba(77,166,255,0.08); }
+    html.dark-mode .contact-item {
+      border-bottom: 1px solid rgba(255,255,255,0.02);
+    }
+
+    .contact-item:hover { background: rgba(0,0,0,0.03); }
+    html.dark-mode .contact-item:hover { background: rgba(255,255,255,0.03); }
+    .contact-item.active { background: rgba(52,168,83,0.1); }
+    html.dark-mode .contact-item.active { background: rgba(77,166,255,0.08); }
     .contact-item.active::before {
       content: '';
       position: absolute; left: 0; top: 0; bottom: 0;
@@ -175,44 +223,75 @@
     }
 
     .contact-avatar {
-      width: 42px; height: 42px;
+      width: 40px; height: 40px;
       border-radius: 50%;
       background: var(--surface-2);
       border: 2px solid var(--border);
       display: flex; align-items: center; justify-content: center;
-      font-size: 0.78rem; font-weight: 800;
+      font-size: 0.75rem; font-weight: 800;
       color: var(--cyan);
       flex-shrink: 0;
       position: relative;
     }
 
     .contact-item.active .contact-avatar {
+      background: linear-gradient(135deg, rgba(52,168,83,0.2), rgba(52,168,83,0.2));
+      border-color: rgba(52,168,83,0.3);
+    }
+
+    html.dark-mode .contact-item.active .contact-avatar {
       background: linear-gradient(135deg, rgba(86,224,200,0.2), rgba(77,166,255,0.2));
       border-color: rgba(77,166,255,0.3);
     }
 
     .contact-info { flex: 1; min-width: 0; }
-    .contact-name { font-size: 0.88rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .contact-preview { font-size: 0.75rem; color: var(--text-dim); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .contact-name { font-size: 0.82rem; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .contact-preview { font-size: 0.72rem; color: var(--text-dim); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
     .contact-time { font-size: 0.68rem; color: var(--muted); font-family: 'JetBrains Mono', monospace; flex-shrink: 0; }
+
+    /* Delete button */
+    .contact-delete-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: transparent;
+      border: 1px solid rgba(197, 60, 29, 0.3);
+      color: var(--red);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      transition: all 150ms;
+      opacity: 0;
+      flex-shrink: 0;
+    }
+    .contact-item:hover .contact-delete-btn { opacity: 1; }
+    .contact-delete-btn:hover { background: rgba(197, 60, 29, 0.15); border-color: rgba(197, 60, 29, 0.6); }
 
     /* Add user button at bottom of list */
     .add-user-btn {
-      margin: 12px 16px;
-      padding: 10px;
+      margin: 8px 12px;
+      padding: 8px;
       border-radius: var(--radius);
-      border: 1px dashed rgba(77,166,255,0.25);
+      border: 1px dashed rgba(52,168,83,0.4);
       background: transparent;
       color: var(--cyan);
       font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 0.82rem;
+      font-size: 0.78rem;
       font-weight: 600;
       cursor: pointer;
       transition: all 160ms;
       display: flex; align-items: center; justify-content: center; gap: 6px;
       flex-shrink: 0;
     }
-    .add-user-btn:hover { background: rgba(77,166,255,0.06); border-color: rgba(77,166,255,0.4); }
+    .add-user-btn:hover { background: rgba(52,168,83,0.08); border-color: rgba(52,168,83,0.5); }
+
+    html.dark-mode .add-user-btn {
+      border-color: rgba(77,166,255,0.3);
+      color: var(--cyan);
+    }
+    html.dark-mode .add-user-btn:hover { background: rgba(77,166,255,0.06); border-color: rgba(77,166,255,0.4); }
 
     /* ══════════════════════════════════════
        MIDDLE PANEL — Chat Area
@@ -237,10 +316,10 @@
 
     /* Chat header */
     .chat-header {
-      display: flex; align-items: center; gap: 12px;
-      padding: 12px 20px;
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 16px;
       border-bottom: 1px solid var(--border);
-      background: rgba(17,24,39,0.9);
+      background: var(--panel-m);
       backdrop-filter: blur(10px);
       z-index: 10;
       flex-shrink: 0;
@@ -256,8 +335,8 @@
     }
 
     .chat-header-info { flex: 1; }
-    .chat-header-name { font-size: 0.92rem; font-weight: 700; }
-    .chat-header-sub { font-size: 0.72rem; color: var(--text-dim); margin-top: 1px; }
+    .chat-header-name { font-size: 0.88rem; font-weight: 800; color: var(--text); }
+    .chat-header-sub { font-size: 0.68rem; color: var(--muted); margin-top: 0px; font-weight: 500; }
 
     .chat-header-actions { display: flex; gap: 8px; }
 
@@ -272,7 +351,7 @@
       font-size: 0.85rem;
       transition: all 150ms;
     }
-    .icon-btn:hover { background: var(--surface); color: var(--text); border-color: rgba(77,166,255,0.2); }
+    .icon-btn:hover { background: var(--surface); color: var(--text); border-color: rgba(52,168,83,0.3); }
 
     /* Messages area */
     #chat-messages {
@@ -317,35 +396,51 @@
 
     .bubble-wrap.out .bubble {
       background: var(--bubble-out);
-      border: 1px solid rgba(77,166,255,0.18);
+      border: none;
       border-bottom-right-radius: 4px;
-      color: #cce4ff;
+      color: #000000;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      font-weight: 500;
+    }
+
+    html.dark-mode .bubble-wrap.out .bubble {
+      color: #e1e1e1;
     }
 
     .bubble-wrap.in .bubble {
       background: var(--bubble-in);
-      border: 1px solid var(--border);
+      border: none;
       border-bottom-left-radius: 4px;
       color: var(--text);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      font-weight: 500;
     }
 
     /* System / bot message style */
     .bubble-wrap.bot .bubble {
-      background: linear-gradient(135deg, rgba(26,74,122,0.5), rgba(26,42,61,0.8));
-      border: 1px solid rgba(77,166,255,0.2);
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.78rem;
+      background: var(--bubble-in);
+      border: none;
+      border-bottom-left-radius: 4px;
+      color: var(--text-dim);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 0.875rem;
+      line-height: 1.55;
+      font-weight: 500;
     }
 
-    .bubble-wrap.system { align-self: center; }
+    .bubble-wrap.bot { align-self: flex-start; align-items: flex-start; }
+
+    .bubble-wrap.system { align-self: center; margin: 8px 0; }
     .bubble-wrap.system .bubble {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid var(--border);
+      background: transparent;
+      border: none;
       border-radius: var(--radius);
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       color: var(--muted);
-      padding: 6px 14px;
+      padding: 4px 12px;
       text-align: center;
+      font-style: italic;
     }
 
     .bubble-time {
@@ -358,22 +453,23 @@
 
     /* Balance card bubble */
     .balance-bubble {
-      background: linear-gradient(135deg, rgba(15,25,45,0.9), rgba(20,35,60,0.9));
-      border: 1px solid rgba(77,166,255,0.2);
+      background: var(--bubble-in);
+      border: none;
       border-radius: var(--radius);
-      padding: 14px 16px;
+      padding: 12px 14px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      min-width: 240px;
+      gap: 8px;
+      min-width: 220px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     }
 
     .balance-bubble-title {
-      font-size: 0.7rem;
+      font-size: 0.68rem;
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: var(--muted);
+      color: var(--text-dim);
       display: flex; align-items: center; gap: 6px;
     }
 
@@ -386,9 +482,9 @@
     }
 
     .balance-rows { display: flex; flex-direction: column; gap: 6px; }
-    .balance-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.82rem; }
-    .balance-row .lbl { color: var(--text-dim); }
-    .balance-row .val { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+    .balance-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.82rem; font-weight: 500; }
+    .balance-row .lbl { color: var(--text-dim); font-weight: 500; }
+    .balance-row .val { font-family: 'JetBrains Mono', monospace; font-weight: 700; }
     .val.inc { color: var(--green); }
     .val.exp { color: var(--red); }
     .val.net { color: var(--cyan); }
@@ -408,13 +504,17 @@
       display: flex; justify-content: space-between; align-items: center;
       padding: 8px 10px;
       border-radius: var(--radius-sm);
-      background: rgba(255,255,255,0.03);
-      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.04);
+      border: none;
       font-size: 0.78rem;
     }
 
+    html.dark-mode .tx-item {
+      background: rgba(255,255,255,0.06);
+    }
+
     .tx-item-left { display: flex; flex-direction: column; gap: 2px; }
-    .tx-item-cat { font-weight: 600; color: var(--text); }
+    .tx-item-cat { font-weight: 700; color: var(--text); }
     .tx-item-time { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--muted); }
     .tx-item-amt { font-family: 'JetBrains Mono', monospace; font-weight: 700; }
     .tx-item-amt.inc { color: var(--green); }
@@ -485,7 +585,7 @@
     }
     .chat-textarea::-webkit-scrollbar { display: none; }
     .chat-textarea::placeholder { color: var(--muted); }
-    .chat-textarea:focus { border-color: rgba(77,166,255,0.3); }
+    .chat-textarea:focus { border-color: rgba(52,168,83,0.4); }
 
     .send-btn {
       width: 42px; height: 42px;
@@ -495,12 +595,12 @@
       cursor: pointer;
       display: flex; align-items: center; justify-content: center;
       font-size: 1rem;
-      color: #021c20;
+      color: #ffffff;
       flex-shrink: 0;
       transition: all 160ms;
-      box-shadow: 0 4px 14px rgba(77,166,255,0.25);
+      box-shadow: 0 4px 14px rgba(52,168,83,0.3);
     }
-    .send-btn:hover { transform: scale(1.08); box-shadow: 0 6px 20px rgba(77,166,255,0.4); }
+    .send-btn:hover { transform: scale(1.08); box-shadow: 0 6px 20px rgba(52,168,83,0.45); }
     .send-btn:active { transform: scale(0.96); }
 
     /* ══════════════════════════════════════
@@ -515,14 +615,14 @@
     }
 
     .panel-right-header {
-      padding: 14px 16px;
+      padding: 10px 12px;
       border-bottom: 1px solid var(--border);
-      font-size: 0.72rem;
+      font-size: 0.62rem;
       font-weight: 700;
       letter-spacing: 0.1em;
       text-transform: uppercase;
       color: var(--muted);
-      display: flex; align-items: center; gap: 7px;
+      display: flex; align-items: center; gap: 6px;
       flex-shrink: 0;
     }
 
@@ -535,14 +635,15 @@
     }
 
     /* Status indicators */
-    .status-section { padding: 12px; flex-shrink: 0; border-bottom: 1px solid var(--border); }
+    .status-section { padding: 8px; flex-shrink: 0; border-bottom: 1px solid var(--border); }
 
     .status-item {
       display: flex; justify-content: space-between; align-items: center;
-      padding: 7px 10px;
+      padding: 6px 8px;
       border-radius: var(--radius-sm);
-      font-size: 0.78rem;
+      font-size: 0.74rem;
       color: var(--text-dim);
+      font-weight: 500;
     }
 
     .status-item + .status-item { margin-top: 4px; }
@@ -826,10 +927,10 @@
     .toast {
       padding: 10px 18px;
       border-radius: 999px;
-      background: rgba(15,20,32,0.95);
+      background: rgba(0,0,0,0.92);
       backdrop-filter: blur(16px);
-      border: 1px solid var(--border);
-      color: var(--text);
+      border: 1px solid rgba(0,0,0,0.3);
+      color: #ffffff;
       font-size: 0.82rem;
       font-weight: 600;
       box-shadow: 0 8px 30px rgba(0,0,0,0.6);
@@ -903,10 +1004,13 @@
   <!-- ══ LEFT PANEL ══ -->
   <div class="panel-left">
     <div class="panel-left-header">
-      <div style="display:flex;align-items:center;justify-content:space-between;">
-        <div class="app-brand">
-          <div class="brand-icon">FB</div>
-          <div class="brand-text">FIN<span>BOT</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex:1;">
+          <div class="app-brand">
+            <div class="brand-icon">FB</div>
+            <div class="brand-text">FIN<span>BOT</span></div>
+          </div>
+          <button class="theme-toggle-btn" id="theme-btn" title="Toggle Dark Mode" onclick="toggleTheme()">🌙</button>
         </div>
         <div class="ws-pill">
           <div id="ws-dot"></div>
@@ -1047,7 +1151,7 @@
 // ═══════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════
-let knownUsers   = [{ id:'user1', name:'User 1' }];
+let knownUsers   = [];  // Empty initially - no default user
 let activeUserId = null;
 let chatHistory  = {};   // { userId: [ {role, content, time, type} ] }
 
@@ -1062,6 +1166,7 @@ socket.on("connect", () => {
   document.getElementById("badge-ws").textContent = "ONLINE";
   document.getElementById("badge-ws").className   = "badge ok";
   addLog("info", "WebSocket terhubung.");
+  renderContactList();
 });
 
 socket.on("disconnect", () => {
@@ -1170,6 +1275,29 @@ socket.on("user_list", (users) => {
   renderContactList();
 });
 
+// Handle active user from server
+socket.on("active_user", (userId) => {
+  selectUser(userId);
+});
+
+// Handle user deletion
+socket.on("user_deleted", (data) => {
+  const { userId } = data;
+  knownUsers = knownUsers.filter(u => u.id !== userId);
+  if (activeUserId === userId) {
+    // Switch to first available user
+    if (knownUsers.length > 0) {
+      selectUser(knownUsers[0].id);
+    } else {
+      activeUserId = null;
+      renderChatMessages();
+    }
+  }
+  renderContactList();
+  addLog("info", `User "${userId}" berhasil dihapus.`);
+  showToast(`✅ User "${userId}" dihapus!`, "success");
+});
+
 // ═══════════════════════════════════════════════════════
 // FEATURE 4 — Command & Control Bridge
 // Browser kirim instruksi → WebSocket → gRPC
@@ -1226,6 +1354,16 @@ function cmdRegisterUser() {
   document.getElementById("inp-new-userId").value = "";
   document.getElementById("inp-new-userName").value = "";
   showToast(`👤 Mendaftarkan "${userId}"...`, "info");
+}
+
+function cmdDeleteUser(userId) {
+  if (!userId) { showToast("⚠️ User ID tidak valid.", "error"); return; }
+
+  if (!confirm(`Yakin ingin menghapus user "${userId}"?`)) return;
+
+  addLog("info", `[CMD] Delete user: ${userId}`);
+  socket.emit("cmd_delete_user", { userId });
+  showToast(`🗑️ Menghapus user "${userId}"...`, "info");
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1296,7 +1434,10 @@ function renderContactList(filter = "") {
 
     const item = document.createElement("div");
     item.className = "contact-item" + (isActive ? " active" : "");
-    item.innerHTML = `
+    const contentDiv = document.createElement("div");
+    contentDiv.style.flex = "1";
+    contentDiv.style.minWidth = "0";
+    contentDiv.innerHTML = `
       <div class="contact-avatar">${initials}</div>
       <div class="contact-info">
         <div class="contact-name">${u.name || u.id}</div>
@@ -1304,6 +1445,15 @@ function renderContactList(filter = "") {
       </div>
       <div class="contact-time">${last ? last.time : ""}</div>
     `;
+    item.appendChild(contentDiv);
+
+    // Delete button for all users
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "contact-delete-btn";
+    deleteBtn.textContent = "✕";
+    deleteBtn.onclick = (e) => { e.stopPropagation(); cmdDeleteUser(u.id); };
+    item.appendChild(deleteBtn);
+
     item.onclick = () => selectUser(u.id);
     list.appendChild(item);
   });
@@ -1567,7 +1717,33 @@ document.getElementById("tx-amount").addEventListener("input", e => {
   e.target.value = cleaned === "" ? "" : String(parseInt(cleaned, 10));
 });
 
+// Theme toggle function
+function toggleTheme() {
+  const isDark = document.documentElement.classList.toggle('dark-mode');
+  localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  updateThemeButton();
+}
+
+// Update theme button icon
+function updateThemeButton() {
+  const btn = document.getElementById('theme-btn');
+  if (!btn) return;
+  const isDark = document.documentElement.classList.contains('dark-mode');
+  btn.textContent = isDark ? '☀️' : '🌙';
+}
+
 // ── Init ──────────────────────────────────────────────
+// Load and apply saved theme + initialize UI
+(() => {
+  const savedTheme = localStorage.getItem('theme') || 'light';
+  if (savedTheme === 'dark') {
+    document.documentElement.classList.add('dark-mode');
+  }
+  updateThemeButton();
+  renderContactList();
+})();
+
+// On page load, render contact list (no auto-select)
 
 // ════════════════════════════════════════════════════════
 // KOMPONEN 4 — Mini Category Chart (Event-Driven UI)
@@ -1640,7 +1816,6 @@ function renderCategoryChart() {
   });
 }
 
-renderContactList();
 </script>
 </body>
 </html>

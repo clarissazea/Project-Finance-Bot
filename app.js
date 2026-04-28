@@ -5,6 +5,7 @@ const protoLoader = require("@grpc/proto-loader");
 const path = require("path");
 const http = require("http");
 const { Server } = require("socket.io");
+const fs = require("fs");
  
 const app = express();
 app.use(bodyParser.json());
@@ -38,12 +39,46 @@ const io = new Server(server, {
 let activeHistoryStreams = {};
  
 // ===================================
+// PERSISTENT USER STORAGE
+// Simpan dan load user registry dari file JSON
+// ===================================
+const USERS_FILE = path.join(__dirname, "users.json");
+
+function loadUsers() {
+  try {
+    if (fs.existsSync(USERS_FILE)) {
+      const data = fs.readFileSync(USERS_FILE, 'utf-8');
+      const usersArray = JSON.parse(data);
+      const userMap = new Map();
+      usersArray.forEach(u => {
+        userMap.set(u.userId, u);
+      });
+      console.log(`✅ Loaded ${usersArray.length} users from ${USERS_FILE}`);
+      return userMap;
+    }
+  } catch (err) {
+    console.error(`⚠️ Error loading users: ${err.message}`);
+  }
+  return new Map();
+}
+
+function saveUsers(userMap) {
+  try {
+    const usersArray = Array.from(userMap.values());
+    fs.writeFileSync(USERS_FILE, JSON.stringify(usersArray, null, 2), 'utf-8');
+    console.log(`💾 Saved ${usersArray.length} users to ${USERS_FILE}`);
+  } catch (err) {
+    console.error(`⚠️ Error saving users: ${err.message}`);
+  }
+}
+ 
+// ===================================
 // In-memory user registry
 // Menyimpan daftar user yang sudah terdaftar di sesi ini.
 // Key: userId (string), Value: { userId, userName, registeredAt }
+// Load dari file jika ada, atau mulai kosong
 // ===================================
-const userRegistry = new Map();
-userRegistry.set("user1", { userId: "user1", userName: "User 1", registeredAt: new Date().toISOString() });
+const userRegistry = loadUsers();
  
 io.on("connection", (socket) => {
   console.log(`🔌 Browser terhubung via WebSocket: ${socket.id}`);
@@ -56,7 +91,7 @@ io.on("connection", (socket) => {
   // Browser mengirim perintah via WebSocket → memicu pemanggilan gRPC
   // ===================================
   socket.on("cmd_get_balance", (data) => {
-    const userId = data.userId || "user1";
+    const userId = data.userId || "user0";
     console.log(`📡 [WS CMD] GetSummary untuk userId=${userId}`);
  
     client.GetSummary({ userId: String(userId) }, (err, response) => {
@@ -93,7 +128,7 @@ io.on("connection", (socket) => {
   });
  
   socket.on("cmd_get_history", (data) => {
-    const userId = data.userId || "user1";
+    const userId = data.userId || "user0";
     console.log(`📡 [WS CMD] GetHistory stream untuk userId=${userId}`);
  
     // Batalkan stream sebelumnya jika ada
@@ -137,7 +172,7 @@ io.on("connection", (socket) => {
  
     client.AddTransaction(
       {
-        userId: String(userId || "user1"),
+        userId: String(userId || "user0"),
         type: String(type),
         amount: Number(amount),
         category: String(category)
@@ -198,13 +233,53 @@ io.on("connection", (socket) => {
  
     console.log(`User "${userId}" berhasil didaftarkan ke registry.`);
  
+    // Simpan ke file
+    saveUsers(userRegistry);
+ 
     // Broadcast ke SEMUA browser agar list mereka ter-update juga
     io.emit("user_registered", { userId, userName });
  
     // Kirim list terbaru ke browser yang melakukan register
     socket.emit("user_list", Array.from(userRegistry.values()));
     });
- 
+
+  // ===================================
+  // USER MANAGEMENT — cmd_delete_user
+  // Browser mengirim request delete user via WebSocket.
+  // Flow: hapus dari registry → broadcast ke semua client
+  // ===================================
+  socket.on("cmd_delete_user", (data) => {
+    const userId = String(data.userId || "").trim();
+
+    if (!userId) {
+      socket.emit("user_error", { message: "User ID tidak boleh kosong." });
+      return;
+    }
+
+    // Cegah delete user0 (default user)
+    if (userId === "user0") {
+      socket.emit("user_error", { message: "User 0 tidak bisa dihapus (default user)." });
+      return;
+    }
+
+    console.log(`👤 [WS CMD] Delete user: ${userId}`);
+
+    if (!userRegistry.has(userId)) {
+      socket.emit("user_error", { message: `User "${userId}" tidak ditemukan.` });
+      return;
+    }
+
+    userRegistry.delete(userId);
+    console.log(`User "${userId}" berhasil dihapus.`);
+
+    // Simpan ke file
+    saveUsers(userRegistry);
+
+    // Broadcast ke SEMUA browser agar list mereka ter-update
+    io.emit("user_deleted", { userId });
+    io.emit("user_list", Array.from(userRegistry.values()));
+  });
+
   socket.on("disconnect", () => {
     // Bersihkan stream yang aktif
     if (activeHistoryStreams[socket.id]) {
