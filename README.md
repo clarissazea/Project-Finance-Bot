@@ -1,10 +1,10 @@
-# 💰 Project Finance Bot
+# Project Finance Bot
 
 Project Finance Bot adalah aplikasi chatbot berbasis keuangan yang mengintegrasikan backend Python dengan frontend berbasis Node.js. Aplikasi ini dirancang untuk memberikan interaksi real-time terkait informasi finansial menggunakan teknologi seperti WebSocket dan gRPC.
 
 ---
 
-## 👥 Anggota Tim
+## Anggota Tim
 
 | No  | Nama                | NRP        |
 |-----|---------------------|------------|
@@ -14,23 +14,23 @@ Project Finance Bot adalah aplikasi chatbot berbasis keuangan yang mengintegrasi
 
 ---
 
-## 🚀 Cara Menjalankan Project
+## Cara Menjalankan Project
 
 ### Install python dependency
 
-```bash
+```
 pip install -r requirements.txt
 ```
 
 ### Run Back-end
 
-```bash
+```
 python server.py
 ```
 
 ### Run Front-end
 
-```bash
+```
 npm start
 ```
 
@@ -77,5 +77,3 @@ Struktur project sudah siap untuk:
 Aplikasi berfokus pada bidang finansial yang:
 - Sangat dibutuhkan di kehidupan sehari-hari
 - Memiliki potensi dikembangkan menjadi produk nyata
-
----
